@@ -25,7 +25,6 @@ export default defineConfig({
               { text: 'Vuetify', link: '/third-party-integrations/vuetify' },
               { text: 'Quasar', link: '/third-party-integrations/quasar' },
               { text: 'Prime Vue', link: '/third-party-integrations/prime-vue' },
-              { text: 'Bootstrap Vue', link: '/third-party-integrations/bootstrap-vue' }
             ]
           }
         ]
