@@ -1,11 +1,13 @@
 {
   "name": "vue-modal-manager",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "types": "./dist/lib/index.d.ts",
   "main": "./dist/vue-modal-manager.cjs",
   "module": "./dist/vue-modal-manager.esm.js",
   "sideEffects": false,
+  "homepage": "https://vue-modal-manager.netlify.app",
+  "author": "Mirjalol Norqulov",
   "exports": {
     ".": {
       "import": {
