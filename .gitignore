@@ -26,3 +26,7 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+
+# Ignore Vitepress dist and cache folders
+docs/.vitepress/dist
+docs/.vitepress/cache

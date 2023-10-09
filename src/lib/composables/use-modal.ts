@@ -14,7 +14,7 @@ export const useModal = <T extends Component>(options: UseModalOptions<T>) => {
     options.id = uuidv4()
   }
 
-  const isOpen = computed(() => options.id && !!modals[options.id]?.isOpen)
+  const isOpen = computed(() => !!options.id && !!modals[options.id]?.isOpen)
 
   onBeforeUnmount(() => {
     if (!options.id) {
