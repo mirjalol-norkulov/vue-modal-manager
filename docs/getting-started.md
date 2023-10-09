@@ -19,6 +19,8 @@ pnpm add vue-modal-manager
 
 ## Setup
 
+### Install plugin
+
 Import modal manager plugin in your project's main Javascript file. For example in main.js.
 
 ```js[main.js]
@@ -35,6 +37,24 @@ app.use(VueModalManager, {
 
 app.mount('#app')
 ```
+
+### Wrap root component with `<ModalProvider>` component
+
+In your root Vue component, for example in `App.vue` component import `<ModalProvider>` component and wrap all elements inside it.
+
+````vue[App.vue]
+<script setup>
+import { ModalProvider } from 'vue-modal-provider'
+</script>
+
+<template>
+<ModalProvider>
+  ...other components
+</ModalProvider>
+</template>
+````
+
+That's it, now you are ready to use your first modal manager to open and close modals.
 
 ## Usage
 
