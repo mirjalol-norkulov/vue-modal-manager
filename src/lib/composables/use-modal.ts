@@ -14,13 +14,16 @@ export const useModal = <T extends Component>(options: UseModalOptions<T>) => {
     options.id = uuidv4()
   }
 
+  modals[options.id] = {
+    isOpen: false,
+    component: markRaw(options.component),
+    props: options.props
+  }
+
   const isOpen = computed(() => !!options.id && !!modals[options.id]?.isOpen)
 
   onBeforeUnmount(() => {
-    if (!options.id) {
-      return
-    }
-    if (modals[options.id]) {
+    if (typeof options.id === 'string' && modals[options.id]) {
       delete modals[options.id]
     }
   })
@@ -32,12 +35,6 @@ export const useModal = <T extends Component>(options: UseModalOptions<T>) => {
       }
       if (modals[options.id]) {
         modals[options.id].isOpen = true
-      } else {
-        modals[options.id] = {
-          isOpen: true,
-          component: markRaw(options.component),
-          props: options.props
-        }
       }
       options.onOpen?.()
     },
@@ -47,11 +44,6 @@ export const useModal = <T extends Component>(options: UseModalOptions<T>) => {
       }
       if (modals[options.id]) {
         modals[options.id].isOpen = false
-      } else {
-        modals[options.id] = {
-          isOpen: false,
-          component: options.component
-        }
       }
     },
     isOpen

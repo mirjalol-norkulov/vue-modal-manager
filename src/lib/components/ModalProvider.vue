@@ -7,6 +7,14 @@ import { capitalize } from '@/lib/helpers'
 const openPropName = inject(MODAL_OPEN_PROP_NAME) as string
 const openEventName = inject(MODAL_OPEN_EVENT_NAME) as string
 
+if (!openPropName || !openEventName) {
+  throw new Error(
+    `Missing modal injection keys. Please refer to the documentation on how to setup Vue modal manager: ${
+      import.meta.env.VITE_DOC_LINK
+    }`
+  )
+}
+
 const event = openEventName.startsWith('on') ? openEventName : `on${capitalize(openEventName)}`
 
 const handleUpdate = (value: boolean, id: string) => {

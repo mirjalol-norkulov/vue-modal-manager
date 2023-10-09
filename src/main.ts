@@ -4,7 +4,6 @@ import { VueModalManager } from './lib'
 
 const app = createApp(App)
 app.use(VueModalManager, {
-  openPropName: 'open',
-  openEventName: 'update:open'
+  preset: 'naive-ui'
 })
 app.mount('#app')
