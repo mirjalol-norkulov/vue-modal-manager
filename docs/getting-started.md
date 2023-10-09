@@ -61,7 +61,7 @@ That's it, now you are ready to use your first modal manager to open and close m
 ```vue
 <script setup>
 import { useModal } from 'vue-modal-manager'
-import { UserCreateModal } from '@/components/UserCreateModal.vue'
+import UserCreateModal from '@/components/UserCreateModal.vue'
   
 const { open } = useModal({
   component: UserCreateModal
