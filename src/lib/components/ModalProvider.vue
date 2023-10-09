@@ -19,7 +19,11 @@ const handleUpdate = (value: boolean, id: string) => {
     v-for="(item, id) in modals"
     :key="id"
     :is="item.component"
-    v-bind="{ [openPropName]: item.isOpen, [event]: (value: boolean) => handleUpdate(value, id) }"
+    v-bind="{
+      [openPropName]: item.isOpen,
+      [event]: (value: boolean) => handleUpdate(value, id),
+      ...item.props
+    }"
   />
   <slot />
 </template>

@@ -1,13 +1,15 @@
-import { type Component, computed, onBeforeUnmount } from 'vue'
+import { type Component, computed, onBeforeUnmount, type ExtractPropTypes, markRaw } from 'vue'
 import { modals } from '@/lib/store'
 import { v4 as uuidv4 } from 'uuid'
 
-export interface UseModalOptions {
+export interface UseModalOptions<ComponentType extends Component> {
   id?: string
   component: Component
+  props?: ExtractPropTypes<ComponentType>
+  onOpen?: () => void
 }
 
-export const useModal = (options: UseModalOptions) => {
+export const useModal = <T extends Component>(options: UseModalOptions<T>) => {
   if (!options?.id) {
     options.id = uuidv4()
   }
@@ -33,9 +35,11 @@ export const useModal = (options: UseModalOptions) => {
       } else {
         modals[options.id] = {
           isOpen: true,
-          component: options.component
+          component: markRaw(options.component),
+          props: options.props
         }
       }
+      options.onOpen?.()
     },
     close: () => {
       if (!options.id) {

@@ -8,6 +8,10 @@ import {
   DialogRoot,
   DialogTitle
 } from 'radix-vue'
+
+defineProps<{
+  title?: string
+}>()
 </script>
 
 <template>
@@ -16,7 +20,9 @@ import {
       <DialogOverlay />
       <DialogContent>
         <DialogTitle>
-          <slot name="title"></slot>
+          <slot name="title">
+            {{ title }}
+          </slot>
         </DialogTitle>
         <DialogDescription>
           <slot name="description"></slot>
