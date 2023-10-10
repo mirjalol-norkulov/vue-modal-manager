@@ -18,6 +18,9 @@ export default defineConfig({
       entry: resolve(__dirname, 'src/lib/index.ts'),
       name: 'vue-modal-manager',
       fileName: 'vue-modal-manager'
+    },
+    rollupOptions: {
+      external: ['vue', 'naive-ui', 'radix-vue']
     }
   }
 })
