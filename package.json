@@ -1,5 +1,18 @@
 {
   "name": "vue-modal-manager",
+  "description": "Modal manager for Vue 3 applications. Easily open, close and manage modals. Create custom reusable modals.",
+  "keywords": [
+    "vue",
+    "modal",
+    "manager",
+    "modal-manager",
+    "vue-modal-manager",
+    "vue modal manager",
+    "vue modal",
+    "provider",
+    "modal-provider",
+    "vue-provider"
+  ],
   "version": "0.0.1",
   "type": "module",
   "types": "./dist/lib/index.d.ts",
