@@ -6,6 +6,7 @@ export interface UseModalOptions<ComponentType extends Component> {
   id?: string
   component: Component
   props?: ExtractPropTypes<ComponentType>
+  slots?: any
   onOpen?: () => void
 }
 
@@ -17,7 +18,8 @@ export const useModal = <T extends Component>(options: UseModalOptions<T>) => {
   modals[options.id] = {
     isOpen: false,
     component: markRaw(options.component),
-    props: options.props
+    props: options.props,
+    slots: options.slots
   }
 
   const isOpen = computed(() => !!options.id && !!modals[options.id]?.isOpen)
@@ -29,11 +31,14 @@ export const useModal = <T extends Component>(options: UseModalOptions<T>) => {
   })
 
   return {
-    open: () => {
+    open: (openOptions?: { props?: ExtractPropTypes<T> }) => {
       if (!options.id) {
         return
       }
       if (modals[options.id]) {
+        if (openOptions?.props) {
+          modals[options.id].props = { ...(modals[options.id].props || {}), ...openOptions.props }
+        }
         modals[options.id].isOpen = true
       }
       options.onOpen?.()
