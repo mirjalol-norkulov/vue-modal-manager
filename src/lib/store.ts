@@ -4,5 +4,6 @@ export type ModalState = {
   component: Component
   isOpen: boolean
   props?: Record<string, unknown>
+  slots?: any
 }
 export const modals = reactive<Record<string, ModalState>>({})
