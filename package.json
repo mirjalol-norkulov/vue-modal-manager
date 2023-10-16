@@ -15,7 +15,7 @@
   ],
   "version": "0.0.4",
   "type": "module",
-  "types": "./dist/lib/index.d.ts",
+  "types": "./dist/index.d.ts",
   "main": "./dist/vue-modal-manager.cjs",
   "module": "./dist/vue-modal-manager.esm.js",
   "sideEffects": false,
