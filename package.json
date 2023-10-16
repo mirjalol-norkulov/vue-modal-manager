@@ -25,7 +25,7 @@
     ".": {
       "import": {
         "default": "./dist/vue-modal-manager.js",
-        "types": "./dist/lib/index.d.ts"
+        "types": "./dist/index.d.ts"
       }
     }
   },
