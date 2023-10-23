@@ -1,6 +1,10 @@
 import type { App } from 'vue'
 import { MODAL_OPEN_EVENT_NAME, MODAL_OPEN_PROP_NAME } from '@/lib/injection-keys'
 import { type ModalManagerPreset, presetConfigurations } from '@/lib/config'
+import { useModal } from '@/lib/composables'
+import { ModalProvider } from '@/lib/components'
+
+export { useModal, ModalProvider }
 
 export type ModalManagerWithPresetOptions = {
   preset: ModalManagerPreset
@@ -27,6 +31,3 @@ export const VueModalManager = {
     }
   }
 }
-
-export * from './composables'
-export * from './components'
