@@ -8,11 +8,16 @@ export interface UseModalOptions<ComponentType extends Component> {
   props?: ExtractPropTypes<ComponentType>
   slots?: any
   onOpen?: () => void
+  resetPropsOnClose?: boolean
 }
 
 export const useModal = <T extends Component>(options: UseModalOptions<T>) => {
   if (!options?.id) {
     options.id = uuidv4()
+  }
+
+  if (typeof options.resetPropsOnClose !== 'boolean') {
+    options.resetPropsOnClose = true
   }
 
   modals[options.id] = {
@@ -46,6 +51,9 @@ export const useModal = <T extends Component>(options: UseModalOptions<T>) => {
     close: () => {
       if (!options.id) {
         return
+      }
+      if (options.resetPropsOnClose) {
+        modals[options.id].props = options.props
       }
       if (modals[options.id]) {
         modals[options.id].isOpen = false
