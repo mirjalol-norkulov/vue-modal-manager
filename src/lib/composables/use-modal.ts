@@ -24,7 +24,9 @@ export const useModal = <T extends Component>(options: UseModalOptions<T>) => {
     isOpen: false,
     component: markRaw(options.component),
     props: options.props,
-    slots: options.slots
+    initialProps: options.props,
+    slots: options.slots,
+    resetPropsOnClose: options.resetPropsOnClose
   }
 
   const isOpen = computed(() => !!options.id && !!modals[options.id]?.isOpen)

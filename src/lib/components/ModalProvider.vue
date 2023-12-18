@@ -18,6 +18,9 @@ if (!openPropName || !openEventName) {
 const event = openEventName.startsWith('on') ? openEventName : `on${capitalize(openEventName)}`
 
 const handleUpdate = (value: boolean, id: string) => {
+  if (!value && modals[id].resetPropsOnClose) {
+    modals[id].props = modals[id].initialProps
+  }
   modals[id].isOpen = value
 }
 </script>
