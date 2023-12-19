@@ -61,6 +61,11 @@ export const useModal = <T extends Component>(options: UseModalOptions<T>) => {
         modals[options.id].isOpen = false
       }
     },
+    closeAllModals: () => {
+      Object.keys(modals).forEach((key) => {
+        modals[key].isOpen = false
+      })
+    },
     isOpen
   }
 }

@@ -4,7 +4,7 @@ import { useModal } from '@/lib/composables/use-modal'
 import { NModal, NButton } from 'naive-ui'
 import { h } from 'vue'
 
-const { open } = useModal<typeof NModal>({
+const { open, closeAllModals } = useModal<typeof NModal>({
   component: NModal,
   props: {
     preset: 'card',
@@ -21,6 +21,9 @@ const handleOpen = () => {
       title: 'Hello'
     }
   })
+  setTimeout(() => {
+    closeAllModals()
+  }, 2000)
 }
 </script>
 
