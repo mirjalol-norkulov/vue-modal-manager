@@ -4,6 +4,10 @@
  * Mirrors `.agents/skills/` (the source of truth, read natively by Codex, Cursor, Cline,
  * Amp and friends) into `.claude/skills/`, which is the only place Claude Code looks.
  *
+ * The mirror is one-way but not exclusive: `.claude/skills/` also holds skills with no
+ * `.agents/` counterpart, so only skill directories present in `.agents/skills/` are
+ * pruned here.
+ *
  * Both trees are committed so a fresh clone works in every agent with no setup. That
  * means the copy can drift, so this script exists to make re-syncing a single command:
  *
@@ -37,9 +41,20 @@ if (!existsSync(source)) {
 }
 
 const files = walk(source).map((path) => relative(source, path))
+
+// `.claude/skills/` is not exclusively a mirror: Claude-Code-specific skills live
+// there with no `.agents/` counterpart (the `openspec-*` slash commands, which
+// `openspec init` regenerates). So only prune inside skill directories this script
+// actually owns — otherwise a sync silently deletes them.
+const mirroredSkills = new Set(
+  readdirSync(source, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+)
+
 const stale = walk(target)
   .map((path) => relative(target, path))
-  .filter((path) => !files.includes(path))
+  .filter((path) => mirroredSkills.has(path.split(/[\\/]/)[0]) && !files.includes(path))
 
 const changed = files.filter((path) => {
   const to = join(target, path)
