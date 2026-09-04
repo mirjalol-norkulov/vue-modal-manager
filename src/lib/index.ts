@@ -5,6 +5,7 @@ import { useModal } from '@/lib/composables'
 import { ModalProvider } from '@/lib/components'
 
 export { useModal, ModalProvider }
+export type { ModalManagerPreset }
 
 export type ModalManagerWithPresetOptions = {
   preset: ModalManagerPreset
