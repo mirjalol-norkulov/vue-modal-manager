@@ -15,17 +15,31 @@ pnpm lint             # eslint --fix across the repo
 pnpm format           # prettier --write src/
 pnpm test:unit        # vitest (watch mode)
 pnpm docs:dev         # VitePress docs site from docs/
+pnpm skills:sync      # mirror .agents/skills/ -> .claude/skills/
+pnpm skills:check     # fail if those two trees have drifted
 ```
 
 Single test run: `pnpm test:unit run path/to/file.spec.ts` (add `-t "test name"` to filter by name). There are currently no test files in the repo; vitest is configured (jsdom, `vitest.config.ts` merges `vite.config.ts`) but unused.
 
 ## Repository shape
 
-Three things live side by side:
+Four things live side by side:
 
 - `src/lib/` — the published library. This is the only code that ships.
 - `src/main.ts`, `src/App.vue`, `src/components/` — a throwaway demo app used as a manual playground (currently wired to naive-ui). Not published (`build.copyPublicDir: false`, `files: ["dist"]`).
 - `docs/` — VitePress site published to https://vue-modal-manager.netlify.app.
+- `.agents/skills/` — written procedures for this repo's multi-file workflows, in the cross-agent skills format. Mirrored to `.claude/skills/`.
+
+## Repo workflows worth reading first
+
+Two jobs in this repo touch several files at once and fail quietly when partly done, so they have written procedures rather than living only in this file:
+
+- **`add-preset`** — adding support for another UI component library. Touches four places (`ModalManagerPreset` union, `presetConfigurations`, a docs page, the docs sidebar).
+- **`release`** — cutting a version. A conventional commit, a build-output check, then a bare-version commit and annotated tag via `pnpm version`.
+
+Read `.agents/skills/<name>/SKILL.md` before starting either. Agents that load skills automatically (Claude Code from `.claude/skills/`, Codex/Cursor/Cline/Amp and others from `.agents/skills/`) will surface them on their own.
+
+`.agents/skills/` is the source of truth and `.claude/skills/` is a committed copy, since `core.symlinks=false` here means a committed symlink would arrive as a text file holding its target path. Edit the `.agents/` copy, then run `pnpm skills:sync`.
 
 ## Architecture
 
