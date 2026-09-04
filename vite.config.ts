@@ -45,8 +45,9 @@ export default defineConfig({
       fileName: 'vue-modal-manager'
     },
     rollupOptions: {
-      // `uuid` is intentionally bundled so the UMD build stays self-contained
-      // and consumers inherit no runtime dependencies beyond the Vue peer.
+      // `vue` is the only external: everything else is bundled so the UMD
+      // build stays self-contained and consumers inherit no runtime
+      // dependencies beyond the Vue peer.
       external: ['vue'],
       output: {
         globals: {

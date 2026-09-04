@@ -43,8 +43,9 @@ ls dist/vue-modal-manager.js dist/vue-modal-manager.umd.cjs dist/index.d.ts dist
 on node16/nodenext resolve. Two past releases (`0.0.5`, `0.0.6`) were `fix(types):`
 commits cleaning up exactly this area, so treat it as the known-fragile spot.
 
-Also sanity-check that `uuid` is still in `devDependencies` and not `dependencies` — it is
-bundled on purpose so the package ships with no runtime deps beyond the Vue peer.
+Also sanity-check that `dependencies` is still absent from `package.json` — the package
+ships with no runtime deps beyond the Vue peer, and `vue` must remain the only entry in
+`rollupOptions.external`.
 
 ## Step 3: Bump, commit and tag in one command
 

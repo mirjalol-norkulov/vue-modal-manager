@@ -9,7 +9,8 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Documentation', link: '/getting-started' },
-      { text: 'API', link: '/api/components' }
+      { text: 'API', link: '/api/components' },
+      { text: 'Migration', link: '/migration/0-1-0' }
     ],
 
     sidebar: [
@@ -17,6 +18,7 @@ export default defineConfig({
         text: 'Documentation',
         items: [
           { text: 'Getting started', link: '/getting-started' },
+          { text: 'Server-side rendering', link: '/server-side-rendering' },
           {
             text: 'Third party integrations',
             items: [
@@ -34,6 +36,14 @@ export default defineConfig({
         items: [
           { text: 'Components', link: '/api/components' },
           { text: 'Composables', link: '/api/composables' },
+        ]
+      },
+      {
+        // One entry per released version, newest first, so a later version is
+        // an added sibling rather than a restructure.
+        text: 'Migration',
+        items: [
+          { text: 'To 0.1.0', link: '/migration/0-1-0' },
         ]
       }
     ],

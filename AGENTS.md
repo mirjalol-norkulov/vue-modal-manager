@@ -19,7 +19,7 @@ pnpm skills:sync      # mirror .agents/skills/ -> .claude/skills/
 pnpm skills:check     # fail if those two trees have drifted
 ```
 
-Single test run: `pnpm test:unit run path/to/file.spec.ts` (add `-t "test name"` to filter by name). There are currently no test files in the repo; vitest is configured (jsdom, `vitest.config.ts` merges `vite.config.ts`) but unused.
+Single test run: `pnpm test:unit run path/to/file.spec.ts` (add `-t "test name"` to filter by name). Tests live in `src/lib/__tests__/`; vitest is configured with `environment: 'jsdom'` globally (`vitest.config.ts` merges `vite.config.ts`). The SSR specs need the opposite, so `ssr-rendering.spec.ts` carries a `// @vitest-environment node` docblock — without it every "no DOM globals" scenario passes vacuously, and `open()` is not inert because `window` exists. `src/lib/__tests__/helpers.ts` holds the app factories (`mountApp`, `renderApp`, `renderThenHydrate`) and `getRegistry`, which is the one place that knows how to reach the injected registry.
 
 ## Repository shape
 
@@ -43,7 +43,15 @@ Read `.agents/skills/<name>/SKILL.md` before starting either. Agents that load s
 
 ## Architecture
 
-**Single global registry.** `src/lib/store.ts` exports one module-level `reactive<Record<string, ModalState>>({})`. Every `useModal()` call inserts an entry keyed by `options.id` (uuid v4 when omitted); `ModalProvider` renders `v-for` over the whole registry. So modal state is app-global, not component-local — a duplicate `id` means two `useModal` callers share (and clobber) one entry. `useModal` deletes its entry in `onBeforeUnmount`, so it must be called inside a component `setup`.
+**One registry per app, reached by injection.** `src/lib/store.ts` exports a `createModalRegistry()` factory, not a singleton — `VueModalManager.install()` calls it and `provide`s the result under `MODAL_STORE`. This is what makes SSR safe: `createApp()` runs per request, so each request gets its own registry, which matters because server rendering never runs the `onBeforeUnmount` that deletes entries. Everything that touches modal state goes through `injectModalRegistry()` (also in `store.ts`), so `useModal`, `useModalManager` and `ModalProvider` are all setup-only and all throw the same doc-link error when the plugin is missing.
+
+The registry holds `{ modals, isServerRendered }`. `isServerRendered` is resolved once in `install()` from `typeof window === 'undefined'` — not per call, and deliberately not `import.meta.env.SSR`, which Vite lib mode would inline at *library* build time. `open()` no-ops when it is set, so server markup always shows modals closed.
+
+State is app-global rather than component-local, so a duplicate explicit `id` still means two `useModal` callers share (and clobber) one entry; that now emits a dev-only warning. The guard is `typeof process !== 'undefined' && process.env.NODE_ENV !== 'production'` — both halves are load-bearing and were measured against this build: `process.env.NODE_ENV` survives lib mode verbatim (so a consumer's bundler strips the branch), which is exactly why the `typeof` half is needed (so a bundler-less UMD consumer does not hit `process is not defined`). `import.meta.env.DEV` does *not* work here — it bakes to a constant and the branch is eliminated.
+
+Auto-generated ids come from Vue `useId()`, which is why the peer range is `^3.5.0`: the id has to agree between the server and client render of the same component.
+
+**One close path.** `closeModal(registry, id)` in `store.ts` is the only place a modal is closed, and prop reset lives there. `close()` on the handle, `handleUpdate()` in the provider, and `closeAllModals(registry)` all delegate to it. Add close-time obligations there, not at the call sites.
 
 **The prop/event adapter is the core idea.** The library never renders a modal itself; it renders whatever component you hand it and drives its open state through *configurable* prop and event names, so any third-party dialog works. The plugin (`src/lib/index.ts`) `provide`s two injection keys (`src/lib/injection-keys.ts`):
 
@@ -54,15 +62,17 @@ Options are either `{ preset }` (looked up in `presetConfigurations`, `src/lib/c
 
 Adding a UI-kit preset means touching: the `ModalManagerPreset` union + `presetConfigurations` in `config.ts`, a page under `docs/third-party-integrations/`, and the sidebar in `docs/.vitepress/config.ts`.
 
-**Props lifecycle.** `useModal` snapshots `props` into `initialProps`. `open({ props })` merges over the current props. When `resetPropsOnClose` (default `true`) the props are restored to the snapshot — this reset exists in two places, `close()` in `use-modal.ts` and `handleUpdate()` in `ModalProvider.vue` (the latter fires when the modal closes itself via its own event). Changes to reset behaviour usually need both.
+**Props lifecycle.** `useModal` snapshots `props` into `initialProps`. `open({ props })` merges over the current props. When `resetPropsOnClose` (default `true`) the props are restored to the snapshot on close. That reset lives only in `closeModal` in `store.ts`, so it applies to every way a modal closes — the handle's `close()`, the modal closing itself through its own event (`handleUpdate()` in `ModalProvider.vue`), and close-all.
 
 Known gap: `UseModalOptions.slots` is accepted and stored in `ModalState`, but `ModalProvider` never renders it — the `<component>` has no children. The demo in `src/App.vue` passes slots that do not appear.
 
-`VITE_DOC_LINK` (in the committed `.env`) is inlined into the `ModalProvider` setup error; it must be present at build time.
+`VITE_DOC_LINK` (in the committed `.env`) is inlined into two setup errors — `injectModalRegistry()` in `store.ts` and the prop/event key check in `ModalProvider.vue`; it must be present at build time.
 
 ## Build & packaging
 
-`vite.config.ts` builds in library mode from `src/lib/index.ts` → ESM (`vue-modal-manager.js`) + UMD (`vue-modal-manager.umd.cjs`). Only `vue` is external; **`uuid` is bundled on purpose** so the package has no runtime dependencies beyond the Vue peer — keep it in `devDependencies`.
+`vite.config.ts` builds in library mode from `src/lib/index.ts` → ESM (`vue-modal-manager.js`) + UMD (`vue-modal-manager.umd.cjs`). **`vue` is the only external and there is no `dependencies` block** — everything else is bundled so the UMD build stays self-contained and consumers inherit no runtime dependencies beyond the Vue peer. Keep it that way: anything new goes in `devDependencies` and gets bundled.
+
+The library is type-checked for declaration emit with `tsconfig.app.json`, which extends `@vue/tsconfig/tsconfig.dom.json` and sets `types: []`. So Node globals are not available to library source — `use-modal.ts` declares `process` narrowly itself rather than pulling in `@types/node`. `pnpm type-check` uses `tsconfig.vitest.json`, which *does* include node types, so a missing declaration shows up only in the `vite-plugin-dts` output during `pnpm build`.
 
 Types: `vite-plugin-dts` with `rollupTypes: true` emits a single flat `dist/index.d.ts` (using `tsconfig.app.json`). An inline plugin (`emit-cts-declarations`) byte-copies it to `dist/index.d.cts` for `require()` consumers under node16/nodenext, and throws if declaration generation produced nothing. The `exports` map in `package.json` points at all four files — if you rename an output, update `exports`, `main`, `module`, and `types` together.
 

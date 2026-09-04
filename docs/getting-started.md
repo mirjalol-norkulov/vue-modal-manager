@@ -1,5 +1,10 @@
 # Getting started
 
+::: tip Upgrading from `0.0.x`?
+`0.1.0` requires Vue `^3.5.0` and `useModal()` must now be called inside a component
+`setup()`. See the [`0.1.0` migration guide](/migration/0-1-0).
+:::
+
 ## Installation
 
 ::: code-group
@@ -56,6 +61,13 @@ import { ModalProvider } from 'vue-modal-provider'
 
 That's it, now you are ready to use your first modal manager to open and close modals.
 
+Use a single `<ModalProvider>` near the root of your app. The registry is shared by the
+whole application and the provider renders every modal in it, so two providers in one app
+each render every registered modal.
+
+Rendering on a server? See [Server-side rendering](/server-side-rendering) — it works out
+of the box, but Nuxt needs the plugin registered against `nuxtApp.vueApp`.
+
 ## Usage
 
 ```vue
@@ -74,3 +86,7 @@ const { open } = useModal({
   </div>
 </template>
 ```
+
+`useModal()` has to be called inside a component's `setup()`, the same way `ref()` is. To
+drive one modal from several components, give it an explicit `id` and call `useModal()`
+with that `id` in each of them.
