@@ -208,7 +208,7 @@
 - [x] 12.5 `pnpm docs:dev` builds with no broken links
 - [x] 12.6 Confirm `CHANGELOG.md` is present in `npm pack --dry-run` output and that the `0.1.0` entry is
       complete before tagging
-- [ ] 12.7 Release `0.1.0` following the updated `release` skill, covering both this change and
+- [x] 12.7 Release `0.1.0` following the updated `release` skill, covering both this change and
       `ssr-safe-store`
 
 ## 13. Review fixes
