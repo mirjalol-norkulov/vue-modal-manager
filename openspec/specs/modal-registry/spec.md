@@ -1,7 +1,10 @@
 # modal-registry Specification
 
 ## Purpose
-TBD - created by archiving change ssr-safe-store. Update Purpose after archive.
+One modal registry per Vue application, created by `VueModalManager.install()` and reached by
+injection rather than imported as a module singleton. Covers what registration, automatic id
+assignment and removal guarantee, and what the operations on a modal do once its entry is gone.
+
 ## Requirements
 ### Requirement: Registry is created per Vue application
 

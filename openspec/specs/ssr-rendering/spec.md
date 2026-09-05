@@ -1,7 +1,10 @@
 # ssr-rendering Specification
 
 ## Purpose
-TBD - created by archiving change ssr-safe-store. Update Purpose after archive.
+What the library guarantees when an application is rendered on a server: that concurrent
+requests never observe each other's modals, that server markup always shows modals closed, and
+that the markup a server render produces hydrates on the client without mismatching.
+
 ## Requirements
 ### Requirement: Server renders do not share modal state
 
