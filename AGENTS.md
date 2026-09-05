@@ -14,12 +14,15 @@ pnpm type-check       # vue-tsc --noEmit -p tsconfig.vitest.json --composite fal
 pnpm lint             # eslint --fix across the repo
 pnpm format           # prettier --write src/
 pnpm test:unit        # vitest (watch mode)
+pnpm test:types       # vitest typecheck --run — the *.test-d.ts suites only
 pnpm docs:dev         # VitePress docs site from docs/
 pnpm skills:sync      # mirror .agents/skills/ -> .claude/skills/
 pnpm skills:check     # fail if those two trees have drifted
 ```
 
-Single test run: `pnpm test:unit run path/to/file.spec.ts` (add `-t "test name"` to filter by name). Tests live in `src/lib/__tests__/`; vitest is configured with `environment: 'jsdom'` globally (`vitest.config.ts` merges `vite.config.ts`). The SSR specs need the opposite, so `ssr-rendering.spec.ts` carries a `// @vitest-environment node` docblock — without it every "no DOM globals" scenario passes vacuously, and `open()` is not inert because `window` exists. `src/lib/__tests__/helpers.ts` holds the app factories (`mountApp`, `renderApp`, `renderThenHydrate`) and `getRegistry`, which is the one place that knows how to reach the injected registry.
+Single test run: `pnpm test:unit run path/to/file.spec.ts` (add `-t "test name"` to filter by name). Tests live in `src/lib/__tests__/`; vitest is configured with `environment: 'jsdom'` globally (`vitest.config.ts` merges `vite.config.ts`). The SSR specs need the opposite, so `ssr-rendering.spec.ts` and `modal-lifecycle-ssr.spec.ts` each carry a `// @vitest-environment node` docblock — without it every "no DOM globals" scenario passes vacuously, and `open()`/`openAsync()` are not inert because `window` exists. `src/lib/__tests__/helpers.ts` holds the app factories (`mountApp`, `renderApp`, `renderThenHydrate`) and `getRegistry`, which is the one place that knows how to reach the injected registry. Passing `null` as the options argument installs the plugin with no options, which is the supported shape for an app whose modals self-configure.
+
+**Type tests are a separate vitest mode.** `*.test-d.ts` files are compile-time assertions and `pnpm test:unit run` does **not** execute them — `pnpm test:types` does. The `typecheck` block in `vitest.config.ts` uses `checker: 'vue-tsc'` because `modal-typing.test-d.ts` imports a `.vue` fixture that plain `tsc` cannot parse. Negative cases are written as `@ts-expect-error` rather than raw errors, so `pnpm type-check` (which covers the whole repo through `tsconfig.vitest.json`) stays green while the directive still fails if the error stops being reported. `doc-samples.test-d.ts` compiles every code sample in the docs, so a stale sample fails the build.
 
 ## Repository shape
 
@@ -47,7 +50,7 @@ Read `.agents/skills/<name>/SKILL.md` before starting either. Agents that load s
 
 The registry holds `{ modals, isServerRendered }`. `isServerRendered` is resolved once in `install()` from `typeof window === 'undefined'` — not per call, and deliberately not `import.meta.env.SSR`, which Vite lib mode would inline at *library* build time. `open()` no-ops when it is set, so server markup always shows modals closed.
 
-State is app-global rather than component-local, so a duplicate explicit `id` still means two `useModal` callers share (and clobber) one entry; that now emits a dev-only warning. The guard is `typeof process !== 'undefined' && process.env.NODE_ENV !== 'production'` — both halves are load-bearing and were measured against this build: `process.env.NODE_ENV` survives lib mode verbatim (so a consumer's bundler strips the branch), which is exactly why the `typeof` half is needed (so a bundler-less UMD consumer does not hit `process is not defined`). `import.meta.env.DEV` does *not* work here — it bakes to a constant and the branch is eliminated.
+State is app-global rather than component-local, so a duplicate explicit `id` still means two `useModal` callers share (and clobber) one entry; that now emits a dev-only warning. Every dev-only warning goes through `warnInDevelopment` in `helpers.ts`, which is the single home of the guard `typeof process !== 'undefined' && process.env.NODE_ENV !== 'production'` — both halves are load-bearing and were measured against this build: `process.env.NODE_ENV` survives lib mode verbatim (so a consumer's bundler strips the branch), which is exactly why the `typeof` half is needed (so a bundler-less UMD consumer does not hit `process is not defined`). `import.meta.env.DEV` does *not* work here — it bakes to a constant and the branch is eliminated.
 
 Auto-generated ids come from Vue `useId()`, which is why the peer range is `^3.5.0`: the id has to agree between the server and client render of the same component.
 
@@ -58,21 +61,39 @@ Auto-generated ids come from Vue `useId()`, which is why the peer range is `^3.5
 - `MODAL_OPEN_PROP_NAME` — e.g. `show`, `model-value`, `visible`
 - `MODAL_OPEN_EVENT_NAME` — e.g. `update:show`
 
-Options are either `{ preset }` (looked up in `presetConfigurations`, `src/lib/config.ts`) or explicit `{ openPropName, openEventName }`. `ModalProvider` injects both, throws a doc-link error if either is missing, converts the event name to listener form (`update:show` → `onUpdate:show`, via `capitalize` in `helpers.ts`), and `v-bind`s them as computed keys alongside `item.props`.
+Plugin options are either `{ preset }` (looked up in `presetConfigurations`, `src/lib/config.ts`) or explicit `{ openPropName, openEventName }` — and they are **optional**, because they are only the application-wide *default*. `useModal()` accepts the same three options per modal, so several UI kits coexist in one app.
+
+`resolveModalConfig(id, modal, defaults)` in `config.ts` is the single resolution point, in strict precedence: per-modal explicit pair, then per-modal `preset`, then the injected defaults, then a throw naming the modal id. A `preset` absent from the table counts as not resolving and raises that same named error rather than a bare `TypeError` — `resolvePresetConfig` is what enforces that, and `install()` uses it too.
+
+`ModalProvider` (`src/lib/components/ModalProvider.ts`) is a **render function, not an SFC**: it calls that resolver per modal, converts the event name to listener form (`update:show` → `onUpdate:show`, via `capitalize` in `helpers.ts`), and emits one `h(item.component, boundProps, item.slots)` per entry. It is a render function specifically so slot functions reach the modal component untouched — a template can express dynamic slot names, but only by wrapping each result in another `<component :is>`, which changes what UI kits that inspect their slot children see. The provider's own default slot (the wrapped application content) renders **after** the modals; reversing that would silently change DOM order and break hydration parity.
 
 Adding a UI-kit preset means touching: the `ModalManagerPreset` union + `presetConfigurations` in `config.ts`, a page under `docs/third-party-integrations/`, and the sidebar in `docs/.vitepress/config.ts`.
 
-**Props lifecycle.** `useModal` snapshots `props` into `initialProps`. `open({ props })` merges over the current props. When `resetPropsOnClose` (default `true`) the props are restored to the snapshot on close. That reset lives only in `closeModal` in `store.ts`, so it applies to every way a modal closes — the handle's `close()`, the modal closing itself through its own event (`handleUpdate()` in `ModalProvider.vue`), and close-all.
+**Props lifecycle.** `useModal` snapshots `props` into `initialProps` as a *separate shallow copy*, and `closeModal` restores it as *another* fresh copy. Both ends copy on purpose: aliasing either way makes the live props object be the snapshot, so the next in-place mutation corrupts the thing reset exists to protect — the first cycle would still pass, the second would not. Reset is shallow by design (props legitimately carry functions, so `structuredClone` is not an option) and documented as such.
 
-Known gap: `UseModalOptions.slots` is accepted and stored in `ModalState`, but `ModalProvider` never renders it — the `<component>` has no children. The demo in `src/App.vue` passes slots that do not appear.
+`open({ props })` merges over the current props. When `resetPropsOnClose` (default `true`) the props are restored on close. That reset lives only in `closeModal` in `store.ts`, so it applies to every way a modal closes — the handle's `close()`, the modal closing itself through its own event (`handleUpdate()` in `ModalProvider.ts`), and close-all.
 
-`VITE_DOC_LINK` (in the committed `.env`) is inlined into two setup errors — `injectModalRegistry()` in `store.ts` and the prop/event key check in `ModalProvider.vue`; it must be present at build time.
+The live props, the props snapshot and the slots record are all `markRaw`ed before entering the reactive registry, for the same reason `component` is: a component-valued prop would otherwise come back out as a reactive proxy and Vue logs a warning about it.
+
+That `markRaw` has a consequence worth knowing before you touch it: the registry no longer unwraps refs, which `reactive()` was doing on the library's behalf, so a `ref` in `props` would reach the modal as a `Ref` and render `[object Object]`. `unwrapProps` in `ModalProvider.ts` restores it by reading each top-level value through `unref` at bind time — which also *tracks* the ref, making `props: { title: someRef }` the supported way to have a prop that keeps changing. It has to stay top-level-only, matching how shallow the rest of the props contract is. Registration also copies `options.props`, so mutating the object a consumer passed does not reach the modal; both halves are in the migration guide.
+
+**`props` is inferred and checked.** `ComponentProps<T>` in `use-modal.ts` is hand-rolled, because Vue exports no equivalent. Its unresolved branch is `Record<string, any>` and **must not** become `never`: `Partial<never>` is `never`, and `any` is assignable to everything except `never`, so a `never` fallback would break the documented `props: {...} as any` escape hatch precisely for the components the utility cannot destructure. `key` and `ref` are `Omit`ted (the provider owns both); `class`, `style` and the `onVnode*` hooks survive because the check runs against `$props`.
+
+`UseModalOptions` is a union `type`, not an `interface` — each configuration member closes its siblings off with `?: never`, which is the only way to reject half an explicit `openPropName` / `openEventName` pair. TypeScript's excess-property check against a plain union admits any property present in any constituent.
+
+**`openAsync()` never rejects.** `close(result?)` settles it; every other close path settles it with `undefined`, including unmount and a second `openAsync()` while one is pending. Rejection is prohibited rather than discouraged: an un-awaited rejection terminates a Node process by default, which on an SSR server is a crash. `settleModalResult` in `store.ts` clears the resolver before calling it, so a continuation that synchronously reopens the modal cannot have its own resolver clobbered.
+
+The one path that can still produce a rejection is a consumer passing a thenable to `close()`, which a promise adopts rather than resolves with — a language rule, not something wrappable. So `openAsync()` returns `result.catch(() => undefined)`, attached synchronously so the rejection is always handled, and `settleModalResult` warns in development when the result is thenable. Do not remove either half thinking the other covers it: the `catch` keeps the guarantee, the warning keeps the swallowed error from being invisible.
+
+Known limitation: two `<ModalProvider>` instances in one app each render every registered modal.
+
+`VITE_DOC_LINK` (in the committed `.env`) is inlined into the library's setup errors — `injectModalRegistry()` in `store.ts`, and both configuration failures in `config.ts` (unknown preset, and nothing resolving for a modal); it must be present at build time.
 
 ## Build & packaging
 
 `vite.config.ts` builds in library mode from `src/lib/index.ts` → ESM (`vue-modal-manager.js`) + UMD (`vue-modal-manager.umd.cjs`). **`vue` is the only external and there is no `dependencies` block** — everything else is bundled so the UMD build stays self-contained and consumers inherit no runtime dependencies beyond the Vue peer. Keep it that way: anything new goes in `devDependencies` and gets bundled.
 
-The library is type-checked for declaration emit with `tsconfig.app.json`, which extends `@vue/tsconfig/tsconfig.dom.json` and sets `types: []`. So Node globals are not available to library source — `use-modal.ts` declares `process` narrowly itself rather than pulling in `@types/node`. `pnpm type-check` uses `tsconfig.vitest.json`, which *does* include node types, so a missing declaration shows up only in the `vite-plugin-dts` output during `pnpm build`.
+The library is type-checked for declaration emit with `tsconfig.app.json`, which extends `@vue/tsconfig/tsconfig.dom.json` and sets `types: []`. So Node globals are not available to library source — `helpers.ts` declares `process` narrowly itself rather than pulling in `@types/node`. `pnpm type-check` uses `tsconfig.vitest.json`, which *does* include node types, so a missing declaration shows up only in the `vite-plugin-dts` output during `pnpm build`.
 
 Types: `vite-plugin-dts` with `rollupTypes: true` emits a single flat `dist/index.d.ts` (using `tsconfig.app.json`). An inline plugin (`emit-cts-declarations`) byte-copies it to `dist/index.d.cts` for `require()` consumers under node16/nodenext, and throws if declaration generation produced nothing. The `exports` map in `package.json` points at all four files — if you rename an output, update `exports`, `main`, `module`, and `types` together.
 
@@ -81,7 +102,8 @@ Path alias `@` → `./src` is defined in `vite.config.ts` and `tsconfig.app.json
 ## Conventions
 
 - Prettier: no semicolons, single quotes, width 100, no trailing commas. Run `pnpm format` rather than hand-formatting.
-- Releases follow the git history pattern: a conventional commit for the change (`feat:`, `fix(build):`, …), then a separate bare-version commit (`0.0.11`) carrying the `package.json` bump with an annotated `vX.Y.Z` tag.
+- Releases follow the git history pattern: a conventional commit for the change (`feat:`, `fix(build):`, …), then a separate bare-version commit (`0.0.11`) carrying the `package.json` bump with an annotated `vX.Y.Z` tag. The `CHANGELOG.md` entry is written as part of the change commit, before the bump — see the `release` skill.
+- `CHANGELOG.md` ships to npm, which is why `files` is `["dist", "CHANGELOG.md"]` rather than `["dist"]`: npm's always-included set does not cover a changelog.
 
 ## Critical
 

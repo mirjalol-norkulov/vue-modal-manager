@@ -10,7 +10,10 @@ export default defineConfig({
       { text: 'Home', link: '/' },
       { text: 'Documentation', link: '/getting-started' },
       { text: 'API', link: '/api/components' },
-      { text: 'Migration', link: '/migration/0-1-0' }
+      // Points at the index rather than a version, so it does not go stale the
+      // release after next. `activeMatch` is what keeps the item highlighted
+      // while the reader is on one of the guides underneath it.
+      { text: 'Migration', link: '/migration/', activeMatch: '/migration/' }
     ],
 
     sidebar: [
@@ -40,10 +43,14 @@ export default defineConfig({
       },
       {
         // One entry per released version, newest first, so a later version is
-        // an added sibling rather than a restructure.
+        // an added sibling rather than a restructure. Labelled `<from> → <to>`
+        // because the question a reader arrives with is whether the guide
+        // covers the version they are on: `0.0.x` answers it, where a specific
+        // `0.0.11` would wrongly narrow a guide that covers every 0.0.x.
         text: 'Migration',
+        link: '/migration/',
         items: [
-          { text: 'To 0.1.0', link: '/migration/0-1-0' },
+          { text: '0.0.x → 0.1.0', link: '/migration/0-1-0' },
         ]
       }
     ],

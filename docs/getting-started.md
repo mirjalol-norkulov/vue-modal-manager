@@ -49,7 +49,7 @@ In your root Vue component, for example in `App.vue` component import `<ModalPro
 
 ````vue[App.vue]
 <script setup>
-import { ModalProvider } from 'vue-modal-provider'
+import { ModalProvider } from 'vue-modal-manager'
 </script>
 
 <template>

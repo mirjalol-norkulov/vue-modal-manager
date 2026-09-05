@@ -1,13 +1,42 @@
-import { type Component, inject, reactive } from 'vue'
+import { type Component, inject, markRaw, reactive } from 'vue'
 import { MODAL_STORE } from '@/lib/injection-keys'
+import { isThenable, warnInDevelopment } from '@/lib/helpers'
+import type { ModalManagerPreset } from '@/lib/config'
+
+/**
+ * A slot function, as a render function may return it: a vnode, an array of
+ * them, a string, or nothing. Deliberately looser than Vue's own `Slot`, whose
+ * `VNode[]` return type rejects the common `() => h('p', 'text')` form.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ModalSlot = (...args: any[]) => unknown
+
+/** Slot name to slot function, forwarded to the rendered component as-is. */
+export type ModalSlots = Record<string, ModalSlot>
+
+export type ModalProps = Record<string, unknown>
+
+/**
+ * Settles a pending `openAsync()`. Internal: never handed to a consumer, and
+ * typed with `any` so a resolver of any result type can be stored here.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ModalResultSettler = (result?: any) => void
 
 export type ModalState = {
   component: Component
   isOpen: boolean
-  props?: Record<string, unknown>
-  initialProps?: Record<string, unknown>
-  slots?: any
-  resetPropsOnClose?: boolean
+  props: ModalProps
+  /** The shallow snapshot taken at registration, restored on close. */
+  initialProps: ModalProps
+  slots?: ModalSlots
+  resetPropsOnClose: boolean
+  /** Per-modal configuration, overriding the application-wide defaults. */
+  preset?: ModalManagerPreset
+  openPropName?: string
+  openEventName?: string
+  /** At most one unsettled `openAsync()` resolver, held while the modal is open. */
+  pendingResult?: ModalResultSettler
 }
 
 export type ModalRegistry = {
@@ -48,10 +77,44 @@ export const injectModalRegistry = (): ModalRegistry => {
 }
 
 /**
- * The single close path. `close()`, the provider's own close event and
- * close-all all delegate here, so prop reset is defined once.
+ * Resolves a pending `openAsync()` promise exactly once, if there is one, and
+ * is a no-op otherwise — so every caller can settle unconditionally.
+ *
+ * Never rejects: an un-awaited rejection terminates a Node process by default,
+ * which on an SSR server is a crash rather than a console warning. Dismissal is
+ * an outcome, not an error.
  */
-export const closeModal = (registry: ModalRegistry, id: string) => {
+export const settleModalResult = (modal: ModalState | undefined, result?: unknown) => {
+  if (!modal?.pendingResult) {
+    return
+  }
+
+  if (isThenable(result)) {
+    // A promise resolved with a thenable *adopts* it — that is the language
+    // rule, not something this library can wrap its way out of. So the result
+    // is the awaited value rather than the thenable, and a rejecting one would
+    // reject the `openAsync()` promise. `openAsync()` catches that (resolving
+    // with `undefined`) to keep the never-rejects guarantee, and says so here,
+    // because a silently swallowed error is worth one line of warning.
+    warnInDevelopment(
+      'close() was given a thenable as its result, which the openAsync() promise adopts rather than resolves with. Await the value before calling close(); if the thenable rejects, the modal result is `undefined`.'
+    )
+  }
+
+  const settle = modal.pendingResult
+
+  // Cleared before resolving, so a continuation that reopens the modal
+  // synchronously cannot have its own resolver overwritten by this one.
+  modal.pendingResult = undefined
+  settle(result)
+}
+
+/**
+ * The single close path. `close()`, the provider's own close event and
+ * close-all all delegate here, so prop reset and result settlement are each
+ * defined once rather than being an obligation four call sites must remember.
+ */
+export const closeModal = (registry: ModalRegistry, id: string, result?: unknown) => {
   const modal = registry.modals[id]
 
   if (!modal) {
@@ -59,10 +122,15 @@ export const closeModal = (registry: ModalRegistry, id: string) => {
   }
 
   if (modal.resetPropsOnClose) {
-    modal.props = modal.initialProps
+    // A fresh copy every time. Handing back the snapshot object itself makes
+    // the live props *be* the snapshot, so the next in-place mutation corrupts
+    // it and reset silently stops working from the second cycle on.
+    modal.props = markRaw({ ...modal.initialProps })
   }
 
   modal.isOpen = false
+
+  settleModalResult(modal, result)
 }
 
 export const closeAllModals = (registry: ModalRegistry) => {

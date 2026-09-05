@@ -22,7 +22,27 @@ conventional prefix matching the history (`feat:`, `fix:`, `fix(build):`, `fix(t
 **Never include a `Co-Authored-By` or any other attribution trailer.** This is a hard
 repo rule.
 
-## Step 2: Verify the build actually emits everything
+## Step 2: Write the changelog entry
+
+`CHANGELOG.md` at the repo root is in [Keep a Changelog](https://keepachangelog.com/)
+format, newest version first. Add the entry for the version you are about to cut, **before**
+the bump — a `pnpm version` run with no entry written is how a changelog goes stale, and
+catching it after the tag means an untagging dance.
+
+- Group the entry into `Added` / `Changed` / `Fixed`.
+- Mark every breaking item explicitly with a leading `**BREAKING**`, and every change of
+  runtime behaviour under an unchanged signature with `**BEHAVIOURAL**`.
+- If the release has a migration guide under `docs/migration/`, link it from the top of the
+  entry rather than restating it.
+
+`CHANGELOG.md` is in `package.json`'s `files` array, so it ships to npm. Do not remove it
+from there: npm's always-included set covers `package.json`, the README and the LICENSE,
+but not a changelog.
+
+The changelog belongs in the *change* commit from step 1, not in the bare-version commit —
+`pnpm version` must produce a commit touching only `package.json`.
+
+## Step 3: Verify the build actually emits everything
 
 Run this before bumping, not after — a broken build caught after the tag means an
 untagging dance:
@@ -47,7 +67,7 @@ Also sanity-check that `dependencies` is still absent from `package.json` — th
 ships with no runtime deps beyond the Vue peer, and `vue` must remain the only entry in
 `rollupOptions.external`.
 
-## Step 3: Bump, commit and tag in one command
+## Step 4: Bump, commit and tag in one command
 
 ```sh
 pnpm version patch
@@ -63,7 +83,7 @@ Then confirm the version commit and its tag both landed:
 git log --oneline -3 && git tag -l --sort=v:refname | tail -3
 ```
 
-## Step 4: Push commits and the tag
+## Step 5: Push commits and the tag
 
 `pnpm version` creates the tag locally only, and a plain `git push` does not send tags.
 Every release so far is tagged on the remote (`v0.0.2` through `v0.0.11`, all annotated) —
@@ -73,7 +93,7 @@ keep that unbroken:
 git push && git push --tags
 ```
 
-## Step 5: Publish
+## Step 6: Publish
 
 Publishing is outward-facing and irreversible for a given version number, so confirm with
 the user before running it unless they already said to publish:
@@ -82,11 +102,12 @@ the user before running it unless they already said to publish:
 npm publish
 ```
 
-`files: ["dist"]` means only `dist/` ships. Verify that with `npm pack --dry-run` first if
-anything about the packaging changed in this release.
+`files: ["dist", "CHANGELOG.md"]` is what ships. Verify that with `npm pack --dry-run`
+first if anything about the packaging changed in this release, and confirm `CHANGELOG.md`
+is in the listed contents.
 
 ## Report back
 
-State the new version, that the tag exists, whether it was pushed, and whether you
-published or stopped short of publishing. Do not describe a release as done if the tag or
-the push is missing.
+State the new version, that the changelog entry and the tag exist, whether it was pushed,
+and whether you published or stopped short of publishing. Do not describe a release as done
+if the changelog entry, the tag or the push is missing.

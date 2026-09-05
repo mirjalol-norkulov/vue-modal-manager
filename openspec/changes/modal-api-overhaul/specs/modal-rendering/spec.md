@@ -22,6 +22,23 @@ Entries in `item.props` SHALL be bound alongside.
 - **THEN** that content is rendered, in the same position relative to the rendered modals as before the render
   function rewrite
 
+### Requirement: Top-level ref prop values are unwrapped when bound
+
+The provider SHALL read each top-level entry of a modal `props` through `unref` before
+binding it, so a `ref` supplied as a prop value reaches the modal component as its value.
+Reading the ref SHALL also track it, so a later write re-renders that modal. Props are
+`markRaw`ed before entering the reactive registry, so nothing else unwraps them.
+
+#### Scenario: A ref supplied as a prop value
+
+- **WHEN** a modal is registered with a `ref` as one of its prop values
+- **THEN** the rendered component receives that ref value, not the ref itself
+
+#### Scenario: Writing to the ref after registration
+
+- **WHEN** that ref is written to after the modal was registered
+- **THEN** the rendered component receives the new value
+
 ### Requirement: Open event name is converted to a listener name
 
 The provider SHALL convert the resolved open event name into its listener form by prefixing `on` and

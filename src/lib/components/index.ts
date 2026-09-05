@@ -1,1 +1,1 @@
-export { default as ModalProvider } from './ModalProvider.vue'
+export { ModalProvider } from './ModalProvider'

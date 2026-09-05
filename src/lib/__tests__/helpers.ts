@@ -26,25 +26,32 @@ export const StubModal = defineComponent({
 export const getRegistry = (app: App): ModalRegistry =>
   app.runWithContext(() => injectModalRegistry())
 
-/** Builds an application with the plugin installed, but does not render it. */
-export const createTestApp = (root: Component, options: ModalManagerOptions = testOptions): App => {
+/**
+ * Builds an application with the plugin installed, but does not render it.
+ * `null` installs the plugin with *no* options, which is the supported shape
+ * for an application whose modals all carry their own configuration.
+ */
+export const createTestApp = (
+  root: Component,
+  options: ModalManagerOptions | null = testOptions
+): App => {
   const app = createApp(root)
-  app.use(VueModalManager, options)
+  app.use(VueModalManager, options ?? undefined)
   return app
 }
 
 /** The same, for the render/hydrate pair — `createSSRApp` on both sides. */
 export const createTestSSRApp = (
   root: Component,
-  options: ModalManagerOptions = testOptions
+  options: ModalManagerOptions | null = testOptions
 ): App => {
   const app = createSSRApp(root)
-  app.use(VueModalManager, options)
+  app.use(VueModalManager, options ?? undefined)
   return app
 }
 
 /** Mounts into a throwaway container and hands back the registry to assert on. */
-export const mountApp = (root: Component, options?: ModalManagerOptions) => {
+export const mountApp = (root: Component, options?: ModalManagerOptions | null) => {
   const app = createTestApp(root, options)
   const container = document.createElement('div')
   document.body.appendChild(container)
@@ -67,7 +74,7 @@ export const mountApp = (root: Component, options?: ModalManagerOptions) => {
  * environment this is a faithful server render; under `jsdom` it still produces
  * server markup, but `window` exists so the app is not marked server-rendering.
  */
-export const renderApp = async (root: Component, options?: ModalManagerOptions) => {
+export const renderApp = async (root: Component, options?: ModalManagerOptions | null) => {
   const app = createTestSSRApp(root, options)
   const registry = getRegistry(app)
   const html = await renderToString(app)
@@ -79,7 +86,7 @@ export const renderApp = async (root: Component, options?: ModalManagerOptions) 
  * Server-renders a tree, then hydrates a second application of the same shape
  * over that markup — the pair hydration parity has to hold across.
  */
-export const renderThenHydrate = async (root: Component, options?: ModalManagerOptions) => {
+export const renderThenHydrate = async (root: Component, options?: ModalManagerOptions | null) => {
   const html = await renderToString(createTestSSRApp(root, options))
 
   const container = document.createElement('div')

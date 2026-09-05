@@ -20,6 +20,23 @@ props rather than replacing them, and SHALL NOT mutate the registration snapshot
 - **WHEN** a modal is opened with props and then closed with `resetPropsOnClose` enabled
 - **THEN** the props returned to their registration values
 
+### Requirement: Registration copies the supplied props object
+
+`useModal()` SHALL copy the `props` object it is given rather than storing that object, so
+the options object is never written to. A modal therefore SHALL NOT follow later mutations
+of the object the caller passed; a `ref` supplied as a prop value is the supported way to
+keep a prop live after registration.
+
+#### Scenario: The caller's object is never written to
+
+- **WHEN** a modal is opened with extra props and then closed with reset enabled
+- **THEN** the props object originally passed to `useModal()` is unchanged
+
+#### Scenario: Mutating the caller's object after registration
+
+- **WHEN** the object passed as `props` is mutated after the modal was registered
+- **THEN** the modal props are unchanged
+
 ### Requirement: Prop reset has a single definition
 
 Prop reset SHALL be defined once and produce identical results whether the modal was closed through the
@@ -139,6 +156,13 @@ the modal can no longer be closed. Dismissal is an outcome, not an error.
 
 - **WHEN** `open()` is called on a modal that is already open with a pending `openAsync()` promise
 - **THEN** the promise remains pending and settles when the modal is eventually closed
+
+#### Scenario: A thenable result that rejects
+
+- **WHEN** `close()` is given a thenable that rejects, which a promise adopts rather than
+  resolving with
+- **THEN** the promise still resolves, with `undefined`, and a development-only warning
+  names the cause rather than the error vanishing silently
 
 ### Requirement: openAsync is inert during server rendering
 
