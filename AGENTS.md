@@ -4,7 +4,12 @@ This file provides guidance to coding agents (Claude Code and others) when worki
 
 ## Commands
 
-Package manager is pnpm (`packageManager: pnpm@11.1.2`).
+Package manager is pnpm (`packageManager: pnpm@11.1.2`), which declares `engines.node: ">=22.13"`.
+That is why `.node-version` pins Node 22 at the repo root: Corepack reads `packageManager` and
+launches that exact pnpm, so a CI image defaulting to an older Node dies inside the Corepack shim
+with `TypeError: Invalid host defined options` before any repo script runs. Netlify hit exactly
+that on Node 18. Bump the pin together with `packageManager`, and keep it a bare version string —
+the file format takes no comments.
 
 ```sh
 pnpm dev              # Vite dev server for the demo playground (src/main.ts + src/App.vue)
